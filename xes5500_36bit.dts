@@ -1,0 +1,589 @@
+ /*
+ * Copyright (C) 2011 Extreme Engineering Solutions, Inc.
+ * Based on P2020DS device tree from Freescale Semiconductor, Inc.
+ *
+ * XPedite5500 air-cooled PMC/XMC single-board computer based on P2020/P2010
+ * Uses 36-bit physical addressing
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/ {
+	model = "xes,xpedite5500";
+	compatible = "xes,xpedite5500", "xes,P2020";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	aliases {
+		ethernet0 = &enet0;
+		ethernet1 = &enet1;
+		ethernet2 = &enet2;
+		serial0 = &serial0;
+		serial1 = &serial1;
+		pci0 = &pci0;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		PowerPC,P2020@0 {
+			device_type = "cpu";
+			reg = <0x0>;
+			next-level-cache = <&L2>;
+		};
+		PowerPC,P2020@1 {
+			device_type = "cpu";
+			reg = <0x1>;
+			next-level-cache = <&L2>;
+		};
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x0 0x0 0x0>;	// Filled in by U-Boot
+	};
+
+	localbus@fef005000 {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		compatible = "fsl,elbc", "simple-bus";
+		reg = <0xf 0xef005000 0 0x1000>;
+		interrupts = <19 2>;
+		interrupt-parent = <&mpic>;
+
+		ranges = <0x0 0x0 0xf 0xf8000000 0x8000000
+			  0x1 0x0 0xf 0xf0000000 0x8000000
+			  0x2 0x0 0xf 0xef800000 0x40000
+			  0x3 0x0 0xf 0xef840000 0x40000>;
+
+		nor-boot@0,0 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "amd,s29gl01gp", "cfi-flash";
+			reg = <0x0 0x0 0x8000000>; /* 128 MB */
+			bank-width = <2>;
+			device-width = <1>;
+
+			partition@0 {
+				label = "Primary user space";
+				reg = <0x00000000 0x6f00000>; /* 111 MB */
+			};
+			partition@6f00000 {
+				label = "Primary kernel";
+				reg = <0x06f00000 0x1000000>; /* 16 MB */
+			};
+			partition@7f00000 {
+				label = "Primary DTB";
+				reg = <0x07f00000 0x40000>; /* 256 KB */
+			};
+			partition@7f40000 {
+				label = "Primary U-Boot environment";
+				reg = <0x07f40000 0x40000>; /* 256 KB */
+			};
+			partition@7f80000 {
+				label = "Primary U-Boot";
+				reg = <0x07f80000 0x80000>; /* 512 KB */
+				read-only;
+			};
+		};
+
+		nor-alternate@1,0 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "amd,s29gl01gp", "cfi-flash";
+			reg = <0x1 0x0 0x8000000>; /* 128 MB */
+			bank-width = <2>;
+			device-width = <1>;
+
+			partition@0 {
+				label = "Secondary user space";
+				reg = <0x00000000 0x6f00000>; /* 111 MB */
+			};
+			partition@6f00000 {
+				label = "Secondary kernel";
+				reg = <0x06f00000 0x1000000>; /* 16 MB */
+			};
+			partition@7f00000 {
+				label = "Secondary DTB";
+				reg = <0x07f00000 0x40000>; /* 256 KB */
+			};
+			partition@7f40000 {
+				label = "Secondary U-Boot environment";
+				reg = <0x07f40000 0x40000>; /* 256 KB */
+			};
+			partition@7f80000 {
+				label = "Secondary U-Boot";
+				reg = <0x07f80000 0x80000>; /* 512 KB */
+				read-only;
+			};
+		};
+
+		upm@2,0 {
+			#address-cells = <0>;
+			#size-cells = <0>;
+			compatible = "fsl,upm-nand";
+			reg = <2 0x0 0x40000>;
+			fsl,upm-addr-offset = <0x10>;
+			fsl,upm-cmd-offset = <0x08>;
+			fsl,upm-wait-flags = <0x1>;
+			chip-delay = <50>;
+
+			/* Standard BOM config */
+			nand@0 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "micron,mt29f32g08";
+
+				partition@0 {
+					label = "NAND filesystem";
+					reg = <0x0 0x80000000>;
+				};
+			};
+		};
+
+		upm@3,0 {
+			#address-cells = <0>;
+			#size-cells = <0>;
+			compatible = "fsl,upm-nand";
+			reg = <3 0x0 0x40000>;
+			fsl,upm-addr-offset = <0x10>;
+			fsl,upm-cmd-offset = <0x08>;
+			fsl,upm-wait-flags = <0x1>;
+			chip-delay = <50>;
+
+			/* Standard BOM config */
+			nand@0 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "micron,mt29f32g08";
+
+				partition@0 {
+					label = "NAND filesystem 2";
+					reg = <0x0 0x80000000>;
+				};
+			};
+		};
+	};
+
+	soc@fef000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		device_type = "soc";
+		compatible = "fsl,p2020-immr", "simple-bus";
+		ranges = <0x0 0xf 0xef000000 0x100000>;
+		bus-frequency = <0>;		// Filled out by uboot.
+
+		ecm-law@0 {
+			compatible = "fsl,ecm-law";
+			reg = <0x0 0x1000>;
+			fsl,num-laws = <12>;
+		};
+
+		ecm@1000 {
+			compatible = "fsl,p2020-ecm", "fsl,ecm";
+			reg = <0x1000 0x1000>;
+			interrupts = <17 2>;
+			interrupt-parent = <&mpic>;
+		};
+
+		memory-controller@2000 {
+			compatible = "fsl,p2020-memory-controller";
+			reg = <0x2000 0x1000>;
+			interrupt-parent = <&mpic>;
+			interrupts = <18 2>;
+		};
+
+		i2c@3000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cell-index = <0>;
+			compatible = "fsl-i2c";
+			reg = <0x3000 0x100>;
+			interrupts = <43 2>;
+			interrupt-parent = <&mpic>;
+			dfsrr;
+
+			temp-sensor@48 {
+				compatible = "dallas,ds7505", "dallas,ds75";
+				reg = <0x48>;
+			};
+
+			temp-sensor@4c {
+				compatible = "adi,adt7461";
+				reg = <0x4c>;
+			};
+
+			eeprom@54 {
+				compatible = "atmel,24c128";
+				reg = <0x54>;
+			};
+
+			rtc@68 {
+				compatible = "stm,m41t00",
+				             "dallas,ds1338";
+				reg = <0x68>;
+			};
+
+			gpio1: gpio@18 {
+				compatible = "nxp,pca9557";
+				reg = <0x18>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				polarity = <0x00>;
+			};
+
+			gpio2: gpio@1e {
+				compatible = "nxp,pca9557";
+				reg = <0x1e>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				polarity = <0x00>;
+			};
+
+			gpio3: gpio@1f {
+				compatible = "nxp,pca9557";
+				reg = <0x1f>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				polarity = <0x00>;
+			};
+		};
+
+		i2c@3100 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cell-index = <1>;
+			compatible = "fsl-i2c";
+			reg = <0x3100 0x100>;
+			interrupts = <43 2>;
+			interrupt-parent = <&mpic>;
+			dfsrr;
+		};
+
+		serial0: serial@4500 {
+			cell-index = <0>;
+			device_type = "serial";
+			compatible = "ns16550";
+			reg = <0x4500 0x100>;
+			clock-frequency = <0>;
+			interrupts = <42 2>;
+			interrupt-parent = <&mpic>;
+		};
+
+		serial1: serial@4600 {
+			cell-index = <1>;
+			device_type = "serial";
+			compatible = "ns16550";
+			reg = <0x4600 0x100>;
+			clock-frequency = <0>;
+			interrupts = <42 2>;
+			interrupt-parent = <&mpic>;
+		};
+
+		spi@7000 {
+			compatible = "fsl,espi";
+			reg = <0x7000 0x1000>;
+			interrupts = <59 0x2>;
+			interrupt-parent = <&mpic>;
+		};
+
+		dma@c300 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "fsl,eloplus-dma";
+			reg = <0xc300 0x4>;
+			ranges = <0x0 0xc100 0x200>;
+			cell-index = <1>;
+			dma-channel@0 {
+				compatible = "fsl,eloplus-dma-channel";
+				reg = <0x0 0x80>;
+				cell-index = <0>;
+				interrupt-parent = <&mpic>;
+				interrupts = <76 2>;
+			};
+			dma-channel@80 {
+				compatible = "fsl,eloplus-dma-channel";
+				reg = <0x80 0x80>;
+				cell-index = <1>;
+				interrupt-parent = <&mpic>;
+				interrupts = <77 2>;
+			};
+			dma-channel@100 {
+				compatible = "fsl,eloplus-dma-channel";
+				reg = <0x100 0x80>;
+				cell-index = <2>;
+				interrupt-parent = <&mpic>;
+				interrupts = <78 2>;
+			};
+			dma-channel@180 {
+				compatible = "fsl,eloplus-dma-channel";
+				reg = <0x180 0x80>;
+				cell-index = <3>;
+				interrupt-parent = <&mpic>;
+				interrupts = <79 2>;
+			};
+		};
+
+		gpio: gpio-controller@f000 {
+			#gpio-cells = <2>;
+			compatible = "fsl,mpc8572-gpio";
+			reg = <0xf000 0x100>;
+			interrupts = <47 0x2>;
+			interrupt-parent = <&mpic>;
+			gpio-controller;
+		};
+
+		L2: l2-cache-controller@20000 {
+			compatible = "fsl,p2020-l2-cache-controller";
+			reg = <0x20000 0x1000>;
+			cache-line-size = <32>;	// 32 bytes
+			cache-size = <0x80000>; // L2, 512k
+			interrupt-parent = <&mpic>;
+			interrupts = <16 2>;
+		};
+
+		dma@21300 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "fsl,eloplus-dma";
+			reg = <0x21300 0x4>;
+			ranges = <0x0 0x21100 0x200>;
+			cell-index = <0>;
+			dma-channel@0 {
+				compatible = "fsl,eloplus-dma-channel";
+				reg = <0x0 0x80>;
+				cell-index = <0>;
+				interrupt-parent = <&mpic>;
+				interrupts = <20 2>;
+			};
+			dma-channel@80 {
+				compatible = "fsl,eloplus-dma-channel";
+				reg = <0x80 0x80>;
+				cell-index = <1>;
+				interrupt-parent = <&mpic>;
+				interrupts = <21 2>;
+			};
+			dma-channel@100 {
+				compatible = "fsl,eloplus-dma-channel";
+				reg = <0x100 0x80>;
+				cell-index = <2>;
+				interrupt-parent = <&mpic>;
+				interrupts = <22 2>;
+			};
+			dma-channel@180 {
+				compatible = "fsl,eloplus-dma-channel";
+				reg = <0x180 0x80>;
+				cell-index = <3>;
+				interrupt-parent = <&mpic>;
+				interrupts = <23 2>;
+			};
+		};
+
+		usb@22000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "fsl-usb2-dr";
+			reg = <0x22000 0x1000>;
+			interrupt-parent = <&mpic>;
+			interrupts = <28 0x2>;
+			phy_type = "ulpi";
+		};
+
+		enet0: ethernet@24000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			cell-index = <0>;
+			device_type = "network";
+			model = "eTSEC";
+			compatible = "gianfar";
+			reg = <0x24000 0x1000>;
+			ranges = <0x0 0x24000 0x1000>;
+			local-mac-address = [ 00 00 00 00 00 00 ];
+			interrupts = <29 2 30 2 34 2>;
+			interrupt-parent = <&mpic>;
+			tbi-handle = <&tbi0>;
+			phy-handle = <&phy0>;
+			phy-connection-type = "rgmii-id";
+
+			mdio@520 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,gianfar-mdio";
+				reg = <0x520 0x20>;
+
+				phy0: ethernet-phy@1 {
+					interrupt-parent = <&mpic>;
+					interrupts = <8 1>;
+					reg = <0x1>;
+				};
+				phy1: ethernet-phy@2 {
+					interrupt-parent = <&mpic>;
+					interrupts = <8 1>;
+					reg = <0x2>;
+				};
+				phy2: ethernet-phy@3 {
+					interrupt-parent = <&mpic>;
+					interrupts = <9 1>;
+					reg = <0x3>;
+				};
+
+				tbi0: tbi-phy@11 {
+					reg = <0x11>;
+					device_type = "tbi-phy";
+				};
+			};
+		};
+
+		enet1: ethernet@25000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			cell-index = <1>;
+			device_type = "network";
+			model = "eTSEC";
+			compatible = "gianfar";
+			reg = <0x25000 0x1000>;
+			ranges = <0x0 0x25000 0x1000>;
+			local-mac-address = [ 00 00 00 00 00 00 ];
+			interrupts = <35 2 36 2 40 2>;
+			interrupt-parent = <&mpic>;
+			tbi-handle = <&tbi1>;
+			phy-handle = <&phy1>;
+			phy-connection-type = "rgmii-id";
+
+			mdio@520 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,gianfar-tbi";
+				reg = <0x520 0x20>;
+
+				tbi1: tbi-phy@11 {
+					reg = <0x11>;
+					device_type = "tbi-phy";
+				};
+			};
+		};
+
+		/* eTSEC 3 front panel port */
+		enet2: ethernet@26000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			cell-index = <1>;
+			device_type = "network";
+			model = "eTSEC";
+			compatible = "gianfar";
+			reg = <0x26000 0x1000>;
+			ranges = <0x0 0x26000 0x1000>;
+			local-mac-address = [ 00 00 00 00 00 00 ];
+			interrupts = <31 2 32 2 33 2>;
+			interrupt-parent = <&mpic>;
+			tbi-handle = <&tbi2>;
+			phy-handle = <&phy2>;
+			phy-connection-type = "rgmii-id";
+
+			mdio@520 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,gianfar-tbi";
+				reg = <0x520 0x20>;
+
+				tbi2: tbi-phy@11 {
+					reg = <0x11>;
+					device_type = "tbi-phy";
+				};
+			};
+		};
+
+		sdhci@2e000 {
+			compatible = "fsl,p2020-esdhc", "fsl,esdhc";
+			reg = <0x2e000 0x1000>;
+			interrupts = <72 0x2>;
+			interrupt-parent = <&mpic>;
+			/* Filled in by U-Boot */
+			clock-frequency = <0>;
+		};
+
+		crypto@30000 {
+			compatible = "fsl,sec3.1", "fsl,sec3.0", "fsl,sec2.4",
+				     "fsl,sec2.2", "fsl,sec2.1", "fsl,sec2.0";
+			reg = <0x30000 0x10000>;
+			interrupts = <45 2 58 2>;
+			interrupt-parent = <&mpic>;
+			fsl,num-channels = <4>;
+			fsl,channel-fifo-len = <24>;
+			fsl,exec-units-mask = <0xbfe>;
+			fsl,descriptor-types-mask = <0x3ab0ebf>;
+		};
+
+		mpic: pic@40000 {
+			interrupt-controller;
+			#address-cells = <0>;
+			#interrupt-cells = <2>;
+			reg = <0x40000 0x40000>;
+			compatible = "chrp,open-pic";
+			device_type = "open-pic";
+		};
+
+		msi@41600 {
+			compatible = "fsl,mpic-msi";
+			reg = <0x41600 0x80>;
+			msi-available-ranges = <0 0x100>;
+			interrupts = <
+				0xe0 0
+				0xe1 0
+				0xe2 0
+				0xe3 0
+				0xe4 0
+				0xe5 0
+				0xe6 0
+				0xe7 0>;
+			interrupt-parent = <&mpic>;
+		};
+
+		global-utilities@e0000 {	//global utilities block
+			compatible = "fsl,p2020-guts";
+			reg = <0xe0000 0x1000>;
+			fsl,has-rstcr;
+		};
+	};
+
+	/* PCI Express controller 1, wired to PCIe to PCI bridge */
+	pci0: pcie@fef00a000 {
+		compatible = "fsl,mpc8548-pcie";
+		device_type = "pci";
+		#interrupt-cells = <1>;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		reg = <0xf 0xef00a000 0 0x1000>;
+		bus-range = <0 255>;
+		ranges = <0x2000000 0x0 0x80000000 0xf 0x80000000 0x0 0x40000000
+			  0x1000000 0x0 0x00000000 0xf 0xe8000000 0x0 0x800000>;
+		clock-frequency = <33333333>;
+		interrupt-parent = <&mpic>;
+		interrupts = <26 2>;
+		interrupt-map-mask = <0xf800 0x0 0x0 0x7>;
+		interrupt-map = <
+			/* IDSEL 0x0 */
+			0x0000 0x0 0x0 1 &mpic 0 0x1
+			0x0000 0x0 0x0 2 &mpic 1 0x1
+			0x0000 0x0 0x0 3 &mpic 2 0x1
+			0x0000 0x0 0x0 4 &mpic 3 0x1
+			>;
+		pcie@0 {
+			reg = <0x0 0x0 0x0 0x0 0x0>;
+			#size-cells = <2>;
+			#address-cells = <3>;
+			device_type = "pci";
+			ranges = <0x2000000 0x0 0x80000000
+				  0x2000000 0x0 0x80000000
+				  0x0 0x40000000
+
+				  0x1000000 0x0 0x0
+				  0x1000000 0x0 0x0
+				  0x0 0x800000>;
+		};
+	};
+};
